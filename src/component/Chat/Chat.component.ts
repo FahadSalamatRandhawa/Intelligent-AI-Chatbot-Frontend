@@ -1,18 +1,19 @@
-import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import { Input } from '../input.component';
+import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms'; // Import FormsModule for ngModel
+import { CONSTANTS } from '../../../constants';
 
 @Component({
   selector: 'ChatBox',
   standalone: true,
-  imports:[CommonModule,Input
-  ],
+  imports: [CommonModule, FormsModule], // Add FormsModule here
   template: `
-    <div class="flex items-center justify-center p-12 absolute bottom-0 right-0 ">
+    <div class="flex items-center justify-center p-12 absolute bottom-0 right-0">
       <div class="w-full">
-        <div 
-          class="formbold-form-wrapper mx-auto w-full max-w-[550px] rounded-lg border border-[#e0e0e0] bg-white" 
-          [ngClass]="{'hidden': !isVisible}"
+        <div
+          class="formbold-form-wrapper mx-auto w-full max-w-[550px] rounded-lg border border-[#e0e0e0] bg-white"
+          [ngClass]="{ hidden: !isVisible }"
         >
           <div class="flex items-center justify-between rounded-t-lg bg-[#A53412]/90 py-4 px-9">
             <h3 class="text-xl font-bold text-white">Chatbox - Online</h3>
@@ -32,78 +33,102 @@ import { Input } from '../input.component';
             </button>
           </div>
 
-          <!-- Chatbox Content (Example) -->
           <div class="py-6 px-9">
-            <p class="text-base font-medium text-[#6B7280]">Welcome! How can I assist you today?</p>
-            <!-- You can add chat messages or other content here -->
+            <!-- Show welcome message if messages array is empty -->
+            <p
+              *ngIf="messages.length === 0"
+              class="text-base font-medium text-[#6B7280]"
+            >
+              Welcome! How can I assist you today?
+            </p>
 
-            <input hlmInput id="message" class=" mt-4 w-full p-2 border border-black/70 rounded-sm" placeholder="Type your message" />    
-          </div>
+            <!-- Loop through and display messages -->
+            <div
+              *ngFor="let message of messages"
+              class="my-2 p-2 rounded border border-gray-300 w-full"
+              [ngClass]="{ ' bg-[#A53412]/90 text-white rounded-sm ': message.role === 'ai', 'bg-gray-200 rounded-sm ': message.role === 'user' }"
+            >
+              {{ message.content }}
+            </div>
 
+            <!-- Input and send button -->
+            <div class="flex gap-2 mt-4 items-center">
+              <input
+                [(ngModel)]="userMessage"
+                id="message"
+                class="w-full p-2 border border-black/70 rounded-sm"
+                placeholder="Type your message"
+              />
+              <button
+                (click)="sendMessage()"
+                class="flex h-[25px] w-[25px] scale-150 items-center justify-center text-center bg-[#d8623e] pb-1 rounded-full text-white"
+              >
+                &gt;
+              </button>
+            </div>
+        </div>
 
         </div>
 
-        <!-- Toggle Button -->
         <div class="mx-auto mt-12 flex max-w-[550px] items-center justify-end space-x-5">
-<button
-  class="flex h-[70px] w-[70px] items-center justify-center rounded-full bg-[#A53412]/10 text-white"
-  (click)="toggleChatbox()"
->
-  <span [ngClass]="{'hidden': isVisible}" class="flex justify-center items-center">
-    <img 
-      src="/chat_icon.png" 
-      alt="Icon 1"
-      class="w-[80%] h-[80%]"
-    />
-  </span>
+          <button
+            class="flex h-[70px] w-[70px] items-center justify-center rounded-full bg-[#A53412]/10 text-white"
+            (click)="toggleChatbox()"
+          >
+            <span [ngClass]="{ hidden: isVisible }" class="flex justify-center items-center">
+              <img src="/chat_icon.png" alt="Icon 1" class="w-[80%] h-[80%]" />
+            </span>
 
-  <span [ngClass]="{'hidden': !isVisible}" class="flex justify-center items-center">
-    <img 
-      src="/chat_icon.png" 
-      alt="Icon 2"
-      class="w-[80%] h-[80%]"
-    />
-  </span>
-</button>
-
-
+            <span [ngClass]="{ hidden: !isVisible }" class="flex justify-center items-center">
+              <img src="/chat_icon.png" alt="Icon 2" class="w-[80%] h-[80%]" />
+            </span>
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>`,
+  `,
   styles: [
     `
-      /* Chatbox container styles */
       .formbold-form-wrapper {
         max-width: 550px;
         width: 100%;
         margin: 0 auto;
       }
-
-      .formbold-form-wrapper .bg-[#6A64F1] {
-        background-color: #6a64f1;
-      }
-
       button {
         cursor: pointer;
       }
-
-      /* Chatbox Button */
-      button svg {
-        width: 20px;
-        height: 20px;
-      }
-
-      /* Hidden content handling when chatbox is closed */
       .hidden {
         display: none;
       }
-    `
-  ]
+    `,
+  ],
 })
 export class ChatboxComponent {
-  isVisible = false;
+  isVisible = true;
+  messages: { role: string; content: string }[] = [];
+  userMessage = '';
+
+  constructor(private http: HttpClient) {}
 
   toggleChatbox() {
     this.isVisible = !this.isVisible;
+  }
+
+  sendMessage() {
+    if (this.userMessage.trim() === '') return;
+
+    this.messages.push({ role: 'user', content: this.userMessage });
+    const chatBody = { messages: this.messages, user_id: '222cs2' };
+
+    this.http.post<any>(CONSTANTS.API_URL+'/chat', chatBody).subscribe({
+      next: (response) => {
+        this.messages.push({ role: 'ai', content: response.content });
+        this.userMessage = '';
+
+      },
+      error: (error) => {
+        console.error('Error sending message:', error);
+      },
+    });
   }
 }
